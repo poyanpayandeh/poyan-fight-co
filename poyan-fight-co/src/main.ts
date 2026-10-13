@@ -2,6 +2,7 @@ import './style.css'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { RoomEnvironment } from 'three/examples/jsm/Addons.js'
 
 // Canvas
 const canvas = document.querySelector<HTMLCanvasElement>('canvas.webgl')
@@ -42,10 +43,11 @@ loader.load(
 
 // Floor
 const floor = new THREE.Mesh(
-  new THREE.CircleGeometry(0.4,64),
-  new THREE.MeshStandardMaterial({color: '#d8d4cd', roughness: 1})
+  new THREE.PlaneGeometry(2,2),
+  new THREE.ShadowMaterial({opacity: 0.18})
 )
 floor.rotation.x = -Math.PI / 2
+floor.receiveShadow = true
 scene.add(floor)
 
 // Lighting
