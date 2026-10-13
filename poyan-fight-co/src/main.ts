@@ -51,10 +51,18 @@ floor.receiveShadow = true
 scene.add(floor)
 
 // Lighting
-const ambient = new THREE.AmbientLight('#ffffff', 0.6)
-scene.add(ambient)
-const key = new THREE.DirectionalLight('#ffffff', 2.5)
-key.position.set(3,4,2)
+const key = new THREE.DirectionalLight('#ffffff, 1.5')
+key.position.set(1,2,1.2)
+key.castShadow = true
+key.shadow.mapSize.set(1024, 1024)
+key.shadow.camera.left = -0.35
+key.shadow.camera.right = 0.35
+key.shadow.camera.top = 0.35
+key.shadow.camera.bottom = -0.35
+key.shadow.camera.near = 0.5
+key.shadow.camera.far = 5
+key.shadow.radius = 4          // softens the shadow edge
+key.shadow.normalBias = 0.002  // stops speckled "shadow acne" on the glove
 scene.add(key)
 
 // Screen size
