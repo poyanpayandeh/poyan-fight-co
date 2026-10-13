@@ -41,7 +41,7 @@ const sizes = { width: window.innerWidth, height: window.innerHeight }
 
 // Camera: front-left, so you see the wordmark and the thumb
 const camera = new THREE.PerspectiveCamera(40, sizes.width / sizes.height, 0.1, 50)
-camera.position.set(-0.3, 0.22, 0.48)
+camera.position.set(0.3, 0.22, 0.48)
 scene.add(camera)
 
 // Controls: drag to spin, scroll or pinch to zoom
