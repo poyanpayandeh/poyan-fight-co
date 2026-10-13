@@ -28,6 +28,11 @@ loader.load(
     const laceCuff = glove.getObjectByName('zone_cuff_lace')
     if (laceCuff) laceCuff.visible=false
 
+    // point camera at the centre of the glove
+    const box = new THREE.Box3().setFromObject(glove)
+    box.getCenter(controls.target)
+    controls.update()
+
     scene.add(glove)
   },
   undefined,
@@ -37,7 +42,7 @@ loader.load(
 
 // Floor
 const floor = new THREE.Mesh(
-  new THREE.CircleGeometry(3,64),
+  new THREE.CircleGeometry(0.4,64),
   new THREE.MeshStandardMaterial({color: '#d8d4cd', roughness: 1})
 )
 floor.rotation.x = -Math.PI / 2
@@ -55,16 +60,16 @@ const sizes = {width: window.innerWidth, height: window.innerHeight }
 
 // Camera
 const camera = new THREE.PerspectiveCamera(40, sizes.width / sizes.height, 0.1, 50)
-camera.position.set(2.5, 1.8, 3.5)
+camera.position.set(-0.3, 0.22, 0.48)
 scene.add(camera)
 
 // Controls: drag to spin, scroll or pinch to zoom
 const controls = new OrbitControls(camera, canvas)
-controls.target.set(0, 0.8, 0)                 // orbit around the glove, not the floor
+controls.target.set(0, 0.15, 0)                 // orbit around the glove, not the floor
 controls.enableDamping = true                  // smooth glide after you let go
 controls.enablePan = false                     // stop people dragging the glove off screen
-controls.minDistance = 2                       // closest zoom
-controls.maxDistance = 7                       // furthest zoom
+controls.minDistance = 0.3                       // closest zoom
+controls.maxDistance = 1.0                       // furthest zoom
 controls.maxPolarAngle = Math.PI / 2 - 0.05    // stop just above the floor
 controls.update()
 
