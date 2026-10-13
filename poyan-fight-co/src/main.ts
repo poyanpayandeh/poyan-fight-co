@@ -1,6 +1,7 @@
 import './style.css'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 
 // Canvas
 const canvas = document.querySelector<HTMLCanvasElement>('canvas.webgl')
@@ -11,12 +12,28 @@ const scene = new THREE.Scene()
 scene.background = new THREE.Color('#e9e6e1')
 
 // capsule placeholder untill glove is ready
-const placeholder = new THREE.Mesh(
-  new THREE.CapsuleGeometry(0.5, 0.6, 8, 24),
-  new THREE.MeshStandardMaterial({ color: '#c3142d', roughness: 0.5 })
+// const placeholder = new THREE.Mesh(
+//   new THREE.CapsuleGeometry(0.5, 0.6, 8, 24),
+//   new THREE.MeshStandardMaterial({ color: '#c3142d', roughness: 0.5 })
+// )
+// placeholder.position.y = 0.8 // lift it so it sits on the floor
+// scene.add(placeholder)
+
+// load in glove
+const loader = new GLTFLoader()
+loader.load(
+  'models/glove.glb', (gltf) => {
+    const glove = gltf.scene
+    
+    const laceCuff = glove.getObjectByName('zone_cuff_lace')
+    if (laceCuff) laceCuff.visible=false
+
+    scene.add(glove)
+  },
+  undefined,
+  (error) => console.error("Could not load the glove:", error)
 )
-placeholder.position.y = 0.8 // lift it so it sits on the floor
-scene.add(placeholder)
+
 
 // Floor
 const floor = new THREE.Mesh(
