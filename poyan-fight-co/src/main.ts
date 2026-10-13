@@ -3,6 +3,11 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
+import GUI from 'lil-gui'
+import {
+  DEFAULT_CONFIG, LEATHER_COLOURS, SEAL_COLOURS, LETTERING_COLOURS, FINISHES,
+  type GloveConfig,
+} from './config'
 
 // Canvas
 const canvas = document.querySelector<HTMLCanvasElement>('canvas.webgl')
@@ -21,7 +26,7 @@ floor.rotation.x = -Math.PI / 2
 floor.receiveShadow = true
 scene.add(floor)
 
-// Lighting
+// Lighting: one key light that casts a soft shadow
 const key = new THREE.DirectionalLight('#ffffff', 1.5)
 key.position.set(1, 2, 1.2)
 key.castShadow = true
@@ -39,7 +44,7 @@ scene.add(key)
 // Screen size
 const sizes = { width: window.innerWidth, height: window.innerHeight }
 
-// Camera: front-left, so you see the wordmark and the thumb
+// Camera: front-right, so you see the seal and the thumb (left-hand glove)
 const camera = new THREE.PerspectiveCamera(40, sizes.width / sizes.height, 0.1, 50)
 camera.position.set(0.3, 0.22, 0.48)
 scene.add(camera)
@@ -64,6 +69,75 @@ const pmrem = new THREE.PMREMGenerator(renderer)
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
 pmrem.dispose()   // only needed to build the environment, so free it straight away
 
+// ---------- Configurator ----------
+
+// The customer's current choices. Everything reads from this.
+const config: GloveConfig = { ...DEFAULT_CONFIG }
+
+// Glove materials, found by the names we gave them in Blender
+const materials = new Map<string, THREE.MeshStandardMaterial>()
+
+// Turn a colour texture into a black-and-white one, so material.color can tint it
+function makeTintable(material: THREE.MeshStandardMaterial) {
+  const map = material.map
+  if (!map) return
+  const img = map.image as ImageBitmap | HTMLImageElement
+  const { width, height } = img
+
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  ctx.drawImage(img, 0, 0)
+  const data = ctx.getImageData(0, 0, width, height)
+  const px = data.data   // r, g, b, a, r, g, b, a, ...
+
+  // How bright each pixel is (the same weights your eye uses)
+  const lum = new Float32Array(width * height)
+  for (let i = 0; i < lum.length; i++) {
+    lum[i] = 0.2126 * px[i * 4] + 0.7152 * px[i * 4 + 1] + 0.0722 * px[i * 4 + 2]
+  }
+
+  // The leather's normal brightness becomes pure white, so a tint shows its true colour
+  const sorted = Float32Array.from(lum).sort()
+  const leatherLevel = sorted[Math.floor(sorted.length * 0.9)] || 1
+  for (let i = 0; i < lum.length; i++) {
+    const v = Math.min(255, (lum[i] / leatherLevel) * 255)
+    px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = v
+  }
+  ctx.putImageData(data, 0, 0)
+
+  const grey = new THREE.CanvasTexture(canvas)
+  grey.colorSpace = THREE.SRGBColorSpace
+  grey.flipY = map.flipY        // glTF textures aren't flipped, so match the original
+  grey.wrapS = map.wrapS
+  grey.wrapT = map.wrapT
+  grey.channel = map.channel
+  material.map = grey
+  material.needsUpdate = true
+  map.dispose()                 // free the old red texture
+}
+
+// Make the glove match the config
+function applyConfig() {
+  const leather = materials.get('boxing_gloves')
+  if (leather) {
+    leather.color.set(LEATHER_COLOURS[config.leather])
+    leather.roughness = config.finish === 'gloss' ? 0.25 : 0.65
+  }
+  materials.get('zone_badge')?.color.set(SEAL_COLOURS[config.seal])
+  materials.get('zone_logo')?.color.set(LETTERING_COLOURS[config.lettering])
+}
+
+// Dev panel for testing. The real menus replace this later.
+const gui = new GUI({ title: 'Config (dev)' })
+gui.add(config, 'leather', Object.keys(LEATHER_COLOURS)).onChange(applyConfig)
+gui.add(config, 'finish', [...FINISHES]).onChange(applyConfig)
+gui.add(config, 'seal', Object.keys(SEAL_COLOURS)).onChange(applyConfig)
+gui.add(config, 'lettering', Object.keys(LETTERING_COLOURS)).onChange(applyConfig)
+
+// ---------- Camera fitting ----------
 
 // How far the camera sits depends on the screen shape
 let gloveRadius = 0.19   // replaced with the real size once the glove loads
@@ -91,24 +165,30 @@ window.addEventListener('resize', () => {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 })
 
-// Load the glove
+// ---------- Load the glove ----------
+
 const loader = new GLTFLoader()
 loader.load(
   '/models/glove.glb',
   (gltf) => {
     const glove = gltf.scene
 
-    // Velcro cuff shows by default. Hiding the lace cuff also hides its name label.
-    const laceCuff = glove.getObjectByName('zone_cuff_lace')
-    if (laceCuff) laceCuff.visible = false
-
-    // Every part casts and receives shadows
+    // Shadows on every part, and collect the materials by name
     glove.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         child.castShadow = true
         child.receiveShadow = true
+        const mats = Array.isArray(child.material) ? child.material : [child.material]
+        for (const m of mats) {
+          if (m instanceof THREE.MeshStandardMaterial) materials.set(m.name, m)
+        }
       }
     })
+
+    // Make the leather recolourable, then apply the starting choices
+    const leatherMat = materials.get('boxing_gloves')
+    if (leatherMat) makeTintable(leatherMat)
+    applyConfig()
 
     // Point the camera at the centre of the glove, whatever its size
     const box = new THREE.Box3().setFromObject(glove)
