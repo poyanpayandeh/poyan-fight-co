@@ -49,8 +49,6 @@ const controls = new OrbitControls(camera, canvas)
 controls.target.set(0, 0.15, 0)                // updated to the glove's centre once it loads
 controls.enableDamping = true                  // smooth glide after you let go
 controls.enablePan = false                     // stop people dragging the glove off screen
-controls.minDistance = 0.3                     // closest zoom
-controls.maxDistance = 1.0                     // furthest zoom
 controls.maxPolarAngle = Math.PI / 2 - 0.05    // stop just above the floor
 controls.update()
 
@@ -66,12 +64,29 @@ const pmrem = new THREE.PMREMGenerator(renderer)
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
 pmrem.dispose()   // only needed to build the environment, so free it straight away
 
+
+// How far the camera sits depends on the screen shape
+let gloveRadius = 0.19   // replaced with the real size once the glove loads
+
+function fitCamera() {
+  const vFov = THREE.MathUtils.degToRad(camera.fov)
+  const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect)
+  const fov = Math.min(vFov, hFov)                      // the narrower direction decides
+  const distance = (gloveRadius * 1.1) / Math.sin(fov / 2)
+  const direction = camera.position.clone().sub(controls.target).normalize()
+  camera.position.copy(controls.target).addScaledVector(direction, distance)
+  controls.minDistance = distance * 0.55
+  controls.maxDistance = distance * 1.6
+  controls.update()
+}
+
 // Keep everything correct when the window changes size
 window.addEventListener('resize', () => {
   sizes.width = window.innerWidth
   sizes.height = window.innerHeight
   camera.aspect = sizes.width / sizes.height
   camera.updateProjectionMatrix()
+  fitCamera()
   renderer.setSize(sizes.width, sizes.height)
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 })
@@ -98,7 +113,8 @@ loader.load(
     // Point the camera at the centre of the glove, whatever its size
     const box = new THREE.Box3().setFromObject(glove)
     box.getCenter(controls.target)
-    controls.update()
+    gloveRadius = box.getBoundingSphere(new THREE.Sphere()).radius
+    fitCamera()
 
     scene.add(glove)
   },
