@@ -1,11 +1,184 @@
-* { 
-  margin: 0; padding: 0; box-sizing: border-box;
+/* Colours used across the page. Change them here and they update everywhere. */
+:root {
+  --bg: #e9e6e1;       /* same as the 3D scene background */
+  --panel: #fbfaf8;
+  --ink: #1b1b20;
+  --muted: #6f6b64;
+  --line: #e2ded7;
+  --accent: #c3142d;
+  --panel-width: 360px;
 }
 
-html, body { 
-  height: 100%; overflow: hidden;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Layout: glove on the left, panel on the right ---------- */
+
+.app {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--panel-width);
+  height: 100vh;
+  height: 100dvh;   /* phones: the visible height, without the browser bars */
+}
+
+.stage {
+  position: relative;
+  background: var(--bg);
+}
+
+/* Absolute, so the canvas fills the stage without pushing the layout around */
 .webgl {
-  position: fixed; inset: 0; width: 100%; height: 100%; display: block; outline: none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  outline: none;
+  touch-action: none;   /* dragging spins the glove instead of scrolling the page */
+}
+
+.panel {
+  background: var(--panel);
+  border-left: 1px solid var(--line);
+  overflow-y: auto;
+  padding: 32px 28px;
+}
+
+/* ---------- Panel header ---------- */
+
+.brand {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.panel h1 {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 6px 0 20px;
+}
+
+/* ---------- One option section ---------- */
+
+.option {
+  padding: 18px 0;
+  border-top: 1px solid var(--line);
+}
+
+.option-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.option-picked {
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+}
+
+.option-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* Round colour buttons. The colour comes from --swatch, set in panel.ts */
+.swatch {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid rgb(0 0 0 / 0.15);
+  background: var(--swatch);
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.swatch:hover {
+  transform: scale(1.06);
+}
+
+/* The picked swatch gets a gap and then a dark ring */
+.swatch[aria-pressed='true'] {
+  box-shadow: 0 0 0 3px var(--panel), 0 0 0 5px var(--ink);
+}
+
+/* Text buttons, used for finish (and later weight) */
+.pill {
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.pill:hover {
+  border-color: var(--ink);
+}
+
+.pill[aria-pressed='true'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+
+/* Clear outline for keyboard users */
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* ---------- Phones: glove on top, panel as a sheet underneath ---------- */
+
+@media (max-width: 760px) {
+  .app {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 55fr) minmax(0, 45fr);
+  }
+
+  .panel {
+    border-left: none;
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -6px 24px rgb(0 0 0 / 0.08);
+    padding: 20px 16px 28px;
+  }
+
+  .panel h1 {
+    font-size: 20px;
+    margin-bottom: 8px;
+  }
+
+  .option {
+    padding: 14px 0;
+  }
 }
