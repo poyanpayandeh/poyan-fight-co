@@ -1,6 +1,6 @@
 import {
   LEATHER_COLOURS, SEAL_COLOURS, LETTERING_COLOURS, FINISHES, WEIGHTS, GLOSS_EXTRA,
-  NAME_EXTRA, NAME_MAX,
+  NAME_EXTRA, NAME_MAX, keysOf,
   type GloveConfig,
 } from './config'
 import { formatPrice } from './price'
@@ -9,11 +9,6 @@ import { formatPrice } from './price'
 function label(value: string | number) {
   const text = String(value)
   return text.charAt(0).toUpperCase() + text.slice(1)
-}
-
-// Object.keys() always returns string[], so tell TypeScript these are the real keys
-function keysOf<T extends string>(colours: Readonly<Record<T, string>>) {
-  return Object.keys(colours) as T[]
 }
 
 // Everything one section needs. Named settings read better than six arguments in a row.

@@ -21,6 +21,12 @@ export interface GloveConfig {
 
 export const DEFAULT_CONFIG: GloveConfig = { leather: 'red', finish: 'matte', seal: 'black', lettering: 'gold', weight: 14, name: '' }
 
+// Object.keys() always returns string[], so tell TypeScript these are the real keys.
+// Used by the panel (to make the swatches) and by share.ts (to check links).
+export function keysOf<T extends string>(colours: Readonly<Record<T, string>>) {
+  return Object.keys(colours) as T[]
+}
+
 // ---------- Prices (NZD) ----------
 // Record<Weight, number> means every weight MUST have a price.
 // Add 18 to WEIGHTS and TypeScript will complain until you add its price here too.

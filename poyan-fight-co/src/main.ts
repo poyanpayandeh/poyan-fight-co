@@ -12,6 +12,7 @@ import { buildPanel } from './panel'
 import { getPrice, formatPrice } from './price'
 import { createNamePatch } from './name-patch'
 import { createFlyer, type View } from './fly'
+import { readConfigFromUrl, saveConfigToUrl, shareBuild } from './share'
 
 // Canvas
 const canvas = document.querySelector<HTMLCanvasElement>('canvas.webgl')
@@ -75,6 +76,10 @@ pmrem.dispose()   // only needed to build the environment, so free it straight a
 
 // The one source of truth. The panel changes it, applyConfig() shows it on the glove.
 const config: GloveConfig = { ...DEFAULT_CONFIG }
+
+// Opened from a shared link? Load that build. This runs before the panel is built,
+// so the panel shows the shared choices straight away.
+readConfigFromUrl(config)
 
 // Glove materials by name, filled in when the model loads
 const materials = new Map<string, THREE.MeshStandardMaterial>()
@@ -169,6 +174,7 @@ function updatePrice() {
 function onConfigChange() {
   applyConfig()
   updatePrice()
+  saveConfigToUrl(config)
 }
 
 // The options panel
@@ -176,15 +182,27 @@ const options = document.querySelector<HTMLElement>('#options')
 if (options) buildPanel(options, config, onConfigChange)
 updatePrice()
 
+// Briefly swap a button's text to confirm something happened, then put it back
+function flash(button: HTMLButtonElement, message: string) {
+  const original = button.textContent
+  button.textContent = message
+  button.disabled = true
+  setTimeout(() => {
+    button.textContent = original
+    button.disabled = false
+  }, 1800)
+}
+
 // Add to cart: there's no real shop behind this concept brand, so just confirm the click
 const cartButton = document.querySelector<HTMLButtonElement>('#add-to-cart')
-cartButton?.addEventListener('click', () => {
-  cartButton.textContent = 'Added (demo)'
-  cartButton.disabled = true
-  setTimeout(() => {
-    cartButton.textContent = 'Add to cart'
-    cartButton.disabled = false
-  }, 1800)
+cartButton?.addEventListener('click', () => flash(cartButton, 'Added (demo)'))
+
+// Share: opens the share menu on phones, copies the link on computers
+const shareButton = document.querySelector<HTMLButtonElement>('#share')
+shareButton?.addEventListener('click', async () => {
+  const outcome = await shareBuild(config)
+  if (outcome === 'copied') flash(shareButton, 'Link copied')
+  if (outcome === 'failed') flash(shareButton, 'Couldn’t copy')
 })
 
 // Typing a name: glide to the patch so you can watch it appear, then glide back when done
@@ -243,7 +261,7 @@ new ResizeObserver(resize).observe(canvas)
 
 let glove: THREE.Group | null = null   // set once the model has loaded
 const sizeAnchor = new THREE.Vector3()  // bottom centre of the glove. It grows and shrinks around this point.
-let gloveSize = 1                       // current size. Eases towards the size for the chosen weight.
+let gloveSize = WEIGHT_SIZES[config.weight]   // current size. Starts right for shared links, then eases on changes.
 
 const loader = new GLTFLoader()
 loader.load(
