@@ -4,12 +4,36 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
-    <title>poyan-fight-co | Glove Builder</title>
+    <title>Build your gloves | Poyan Fight Co</title>
+    <meta name="description" content="Build your own Muay Thai gloves in 3D. Pick the leather, finish and weight, then stitch your name on." />
+    <meta name="theme-color" content="#e9e6e1" />
+
+    <!-- How the link looks when shared on Messenger, WhatsApp, Instagram DMs, LinkedIn, Slack... -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Poyan Fight Co" />
+    <meta property="og:title" content="Build your gloves | Poyan Fight Co" />
+    <meta property="og:description" content="Pick the leather, finish and weight, then stitch your name on. Live in 3D." />
+    <meta property="og:url" content="https://poyan-fight-co.vercel.app/" />
+    <meta property="og:image" content="https://poyan-fight-co.vercel.app/og.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="A red Poyan Fight Co boxing glove next to the words Build your gloves" />
+    <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body>
     <div class="app">
       <div class="stage">
         <canvas class="webgl"></canvas>
+
+        <!-- Covers the stage until the glove has loaded -->
+        <div class="loading" id="loading">
+          <p class="brand">Poyan Fight Co</p>
+          <div class="loading-track"><div class="loading-bar" id="loading-bar"></div></div>
+          <p class="loading-text" id="loading-text">Loading your gloves</p>
+        </div>
+
+        <!-- Shown during the intro spin, hidden on the first drag or click -->
+        <p class="hint hidden" id="hint">Drag to spin</p>
       </div>
 
       <aside class="panel">
