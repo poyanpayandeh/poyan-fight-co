@@ -58,7 +58,7 @@ function section<T extends string | number>({
     return button
   })
 
-  // Highlight the picked button and write its name next to the heading
+
   function showPicked(value: T) {
     picked.textContent = text(value)
     buttons.forEach((button, i) => {
@@ -72,7 +72,6 @@ function section<T extends string | number>({
   return wrap
 }
 
-// The name section: a text box instead of buttons
 function nameSection(config: GloveConfig, onChange: () => void) {
   const wrap = document.createElement('section')
   wrap.className = 'option'
@@ -85,14 +84,14 @@ function nameSection(config: GloveConfig, onChange: () => void) {
   heading.append('Name', extra)
 
   const input = document.createElement('input')
-  input.id = 'name-input'          // main.ts finds it by this id to move the camera
+  input.id = 'name-input'        
   input.className = 'name-input'
   input.type = 'text'
   input.maxLength = NAME_MAX
   input.placeholder = 'Add your name'
   input.autocomplete = 'off'
   input.spellcheck = false
-  input.enterKeyHint = 'done'      // phone keyboards show "Done" instead of "Enter"
+  input.enterKeyHint = 'done'
   input.value = config.name
   input.setAttribute('aria-label', 'Name embroidered on the wrist patch')
 
