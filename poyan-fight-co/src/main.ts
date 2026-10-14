@@ -4,10 +4,11 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import {
-  DEFAULT_CONFIG, LEATHER_COLOURS, SEAL_COLOURS, LETTERING_COLOURS,
+  DEFAULT_CONFIG, LEATHER_COLOURS, SEAL_COLOURS, LETTERING_COLOURS, WEIGHT_SIZES,
   type GloveConfig,
 } from './config'
 import { buildPanel } from './panel'
+import { getPrice, formatPrice } from './price'
 
 // Canvas
 const canvas = document.querySelector<HTMLCanvasElement>('canvas.webgl')
@@ -41,7 +42,7 @@ key.shadow.radius = 4          // softens the shadow edge
 key.shadow.normalBias = 0.002  // stops speckled "shadow acne" on the glove
 scene.add(key)
 
-// Camera
+// Camera: front-right, so you see the wordmark and the thumb on a left-hand glove
 const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 50)   // the real aspect is set in resize()
 camera.position.set(0.3, 0.22, 0.48)
 scene.add(camera)
@@ -59,18 +60,21 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
 renderer.toneMapping = THREE.NeutralToneMapping   // keeps product colours true
 renderer.shadowMap.enabled = true
 
-// Soft studio reflections
+// Soft studio reflections, generated in code so there's no file to download
 const pmrem = new THREE.PMREMGenerator(renderer)
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
 pmrem.dispose()   // only needed to build the environment, so free it straight away
 
+// ---------- Configurator ----------
 
+// The one source of truth. The panel changes it, applyConfig() shows it on the glove.
 const config: GloveConfig = { ...DEFAULT_CONFIG }
 
-
+// Glove materials by name, filled in when the model loads
 const materials = new Map<string, THREE.MeshStandardMaterial>()
 
-
+// The leather texture has red baked in, so a colour tint would mix with that red.
+// This swaps in a greyscale copy, so material.color decides the final colour.
 function makeTintable(material: THREE.MeshStandardMaterial | undefined) {
   const map = material?.map
   if (!material || !map) return
@@ -88,13 +92,13 @@ function makeTintable(material: THREE.MeshStandardMaterial | undefined) {
   const pixels = ctx.getImageData(0, 0, width, height)
   const data = pixels.data
 
- 
+  // Brightness of every pixel
   const brightness = new Float32Array(width * height)
   for (let i = 0; i < brightness.length; i++) {
     brightness[i] = 0.2126 * data[i * 4] + 0.7152 * data[i * 4 + 1] + 0.0722 * data[i * 4 + 2]
   }
 
-  
+  // Scale so the leather comes out near white: the 90th-percentile brightness becomes 255
   const sorted = brightness.slice().sort()
   const bright = sorted[Math.floor(sorted.length * 0.9)] || 255
 
@@ -108,17 +112,17 @@ function makeTintable(material: THREE.MeshStandardMaterial | undefined) {
 
   const texture = new THREE.CanvasTexture(copy)
   texture.colorSpace = THREE.SRGBColorSpace
-  texture.flipY = map.flipY        
+  texture.flipY = map.flipY        // glTF textures are not flipped. Keep it that way.
   texture.wrapS = map.wrapS
   texture.wrapT = map.wrapT
-  texture.channel = map.channel    
+  texture.channel = map.channel    // which UV set the texture uses
   texture.needsUpdate = true
 
   material.map = texture
-  map.dispose()                    
+  map.dispose()                    // the red original isn't needed any more
 }
 
-// push the config onto the glove's materials
+// Push the config onto the glove's materials
 function applyConfig() {
   const leather = materials.get('boxing_gloves')
   if (leather) {
@@ -129,11 +133,48 @@ function applyConfig() {
   materials.get('zone_logo')?.color.set(LETTERING_COLOURS[config.lettering])
 }
 
-// the options panel
-const options = document.querySelector<HTMLElement>('#options')
-if (options) buildPanel(options, config, applyConfig)
+// Show the live price. A quick pop when it changes, so the eye notices.
+const priceEl = document.querySelector<HTMLElement>('#price')
+let shownPrice = 0
 
-// how far the camera sits depends on the canvas shape
+function updatePrice() {
+  const price = getPrice(config)
+  if (!priceEl || price === shownPrice) return
+  priceEl.textContent = formatPrice(price)
+  if (shownPrice !== 0) {
+    priceEl.animate(
+      [{ transform: 'scale(1.12)' }, { transform: 'scale(1)' }],
+      { duration: 250, easing: 'ease-out' },
+    )
+  }
+  shownPrice = price
+}
+
+// Anything that depends on the config gets updated here
+function onConfigChange() {
+  applyConfig()
+  updatePrice()
+}
+
+// The options panel
+const options = document.querySelector<HTMLElement>('#options')
+if (options) buildPanel(options, config, onConfigChange)
+updatePrice()
+
+// Add to cart: there's no real shop behind this concept brand, so just confirm the click
+const cartButton = document.querySelector<HTMLButtonElement>('#add-to-cart')
+cartButton?.addEventListener('click', () => {
+  cartButton.textContent = 'Added (demo)'
+  cartButton.disabled = true
+  setTimeout(() => {
+    cartButton.textContent = 'Add to cart'
+    cartButton.disabled = false
+  }, 1800)
+})
+
+// ---------- Sizing ----------
+
+// How far the camera sits depends on the canvas shape
 let gloveRadius = 0.19   // replaced with the real size once the glove loads
 
 function fitCamera() {
@@ -162,19 +203,23 @@ function resize() {
   renderer.setSize(width, height, false)   // false = let the CSS decide the on-screen size
 }
 
-// runs whenever the layout cvhanges
+// Runs once now, then whenever the canvas changes size (window resize, phone rotation, layout change)
 new ResizeObserver(resize).observe(canvas)
 
+// ---------- Load the glove ----------
 
-// load glove
+let glove: THREE.Group | null = null   // set once the model has loaded
+const sizeAnchor = new THREE.Vector3()  // bottom centre of the glove. It grows and shrinks around this point.
+let gloveSize = 1                       // current size. Eases towards the size for the chosen weight.
+
 const loader = new GLTFLoader()
 loader.load(
   '/models/glove.glb',
   (gltf) => {
-    const glove = gltf.scene
+    const model = gltf.scene
 
-    // cast and recieve shadows, grabs materials
-    glove.traverse((child) => {
+    // Every part casts and receives shadows. Collect the materials by name.
+    model.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         child.castShadow = true
         child.receiveShadow = true
@@ -188,20 +233,40 @@ loader.load(
     makeTintable(materials.get('boxing_gloves'))
     applyConfig()
 
-    // point the camera at the centre of the glove
-    const box = new THREE.Box3().setFromObject(glove)
+    // Point the camera at the centre of the glove, whatever its size
+    const box = new THREE.Box3().setFromObject(model)
     box.getCenter(controls.target)
     gloveRadius = box.getBoundingSphere(new THREE.Sphere()).radius
     fitCamera()
 
-    scene.add(glove)
+    // Size changes happen around the bottom centre, so the glove stays sitting on the floor
+    box.getCenter(sizeAnchor)
+    sizeAnchor.y = box.min.y
+
+    scene.add(model)
+    glove = model
   },
   undefined,
   (error) => console.error('Could not load the glove:', error)
 )
 
-// update every frame
-renderer.setAnimationLoop(() => {
+// Draw every frame
+let lastTime = 0
+
+renderer.setAnimationLoop((time) => {
+  const delta = Math.min((time - lastTime) / 1000, 0.1)   // seconds since the last frame
+  lastTime = time
+
+  // Ease the glove towards the size for the chosen weight.
+  // Using delta keeps the speed the same on 60 Hz and 120 Hz screens.
+  if (glove) {
+    const target = WEIGHT_SIZES[config.weight]
+    gloveSize += (target - gloveSize) * (1 - Math.exp(-10 * delta))
+    glove.scale.setScalar(gloveSize)
+    // Scaling happens around the model's origin, so move it back to keep sizeAnchor in place
+    glove.position.copy(sizeAnchor).multiplyScalar(1 - gloveSize)
+  }
+
   controls.update()
   renderer.render(scene, camera)
 })

@@ -1,26 +1,34 @@
 import {
-  LEATHER_COLOURS, SEAL_COLOURS, LETTERING_COLOURS, FINISHES,
+  LEATHER_COLOURS, SEAL_COLOURS, LETTERING_COLOURS, FINISHES, WEIGHTS, GLOSS_EXTRA,
   type GloveConfig,
 } from './config'
+import { formatPrice } from './price'
 
-
+// 'royal' -> 'Royal', 14 -> '14'
 function label(value: string | number) {
   const text = String(value)
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
-
+// Object.keys() always returns string[], so tell TypeScript these are the real keys
 function keysOf<T extends string>(colours: Readonly<Record<T, string>>) {
   return Object.keys(colours) as T[]
 }
 
-function section<T extends string | number>(
-  title: string,
-  values: readonly T[],
-  current: T,
-  onPick: (value: T) => void,
-  swatch?: (value: T) => string,
-) {
+// Everything one section needs. Named settings read better than six arguments in a row.
+interface SectionOptions<T extends string | number> {
+  title: string
+  values: readonly T[]
+  current: T
+  onPick: (value: T) => void
+  text?: (value: T) => string     // what the button and heading say. Default: 'royal' -> 'Royal'
+  swatch?: (value: T) => string   // give a colour for round swatches. Leave out for text buttons.
+}
+
+// One option section: a heading, the name of the current pick, and a row of buttons
+function section<T extends string | number>({
+  title, values, current, onPick, text = label, swatch,
+}: SectionOptions<T>) {
   const wrap = document.createElement('section')
   wrap.className = 'option'
 
@@ -36,15 +44,15 @@ function section<T extends string | number>(
   const buttons = values.map((value) => {
     const button = document.createElement('button')
     button.type = 'button'
-    button.title = label(value)
+    button.title = text(value)
 
     if (swatch) {
       button.className = 'swatch'
       button.style.setProperty('--swatch', swatch(value))
-      button.setAttribute('aria-label', `${title}: ${label(value)}`)
+      button.setAttribute('aria-label', `${title}: ${text(value)}`)
     } else {
       button.className = 'pill'
-      button.textContent = label(value)
+      button.textContent = text(value)
     }
 
     button.addEventListener('click', () => {
@@ -56,7 +64,7 @@ function section<T extends string | number>(
 
   // Highlight the picked button and write its name next to the heading
   function showPicked(value: T) {
-    picked.textContent = label(value)
+    picked.textContent = text(value)
     buttons.forEach((button, i) => {
       button.setAttribute('aria-pressed', String(values[i] === value))
     })
@@ -71,19 +79,44 @@ function section<T extends string | number>(
 // Builds every section into the panel. Each button updates the config, then calls onChange.
 export function buildPanel(root: HTMLElement, config: GloveConfig, onChange: () => void) {
   root.append(
-    section('Leather', keysOf(LEATHER_COLOURS), config.leather,
-      (value) => { config.leather = value; onChange() },
-      (value) => LEATHER_COLOURS[value]),
+    section({
+      title: 'Leather',
+      values: keysOf(LEATHER_COLOURS),
+      current: config.leather,
+      swatch: (value) => LEATHER_COLOURS[value],
+      onPick: (value) => { config.leather = value; onChange() },
+    }),
 
-    section('Finish', FINISHES, config.finish,
-      (value) => { config.finish = value; onChange() }),
+    section({
+      title: 'Finish',
+      values: FINISHES,
+      current: config.finish,
+      text: (value) => value === 'gloss' ? `Gloss +${formatPrice(GLOSS_EXTRA)}` : 'Matte',
+      onPick: (value) => { config.finish = value; onChange() },
+    }),
 
-    section('Seal', keysOf(SEAL_COLOURS), config.seal,
-      (value) => { config.seal = value; onChange() },
-      (value) => SEAL_COLOURS[value]),
+    section({
+      title: 'Seal',
+      values: keysOf(SEAL_COLOURS),
+      current: config.seal,
+      swatch: (value) => SEAL_COLOURS[value],
+      onPick: (value) => { config.seal = value; onChange() },
+    }),
 
-    section('Lettering', keysOf(LETTERING_COLOURS), config.lettering,
-      (value) => { config.lettering = value; onChange() },
-      (value) => LETTERING_COLOURS[value]),
+    section({
+      title: 'Lettering',
+      values: keysOf(LETTERING_COLOURS),
+      current: config.lettering,
+      swatch: (value) => LETTERING_COLOURS[value],
+      onPick: (value) => { config.lettering = value; onChange() },
+    }),
+
+    section({
+      title: 'Weight',
+      values: WEIGHTS,
+      current: config.weight,
+      text: (value) => `${value} oz`,
+      onPick: (value) => { config.weight = value; onChange() },
+    }),
   )
 }
