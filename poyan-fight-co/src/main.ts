@@ -1,4 +1,5 @@
 import './style.css'
+import '@fontsource/anton'   // the font for the name patch, bundled with the site
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
@@ -9,6 +10,8 @@ import {
 } from './config'
 import { buildPanel } from './panel'
 import { getPrice, formatPrice } from './price'
+import { createNamePatch } from './name-patch'
+import { createFlyer, type View } from './fly'
 
 // Canvas
 const canvas = document.querySelector<HTMLCanvasElement>('canvas.webgl')
@@ -55,6 +58,9 @@ controls.enablePan = false                     // stop people dragging the glove
 controls.maxPolarAngle = Math.PI / 2 - 0.05    // stop just above the floor
 controls.update()
 
+// Smooth camera moves, e.g. to the name patch while you type
+const flyer = createFlyer(camera, controls)
+
 // Renderer
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
 renderer.toneMapping = THREE.NeutralToneMapping   // keeps product colours true
@@ -72,6 +78,9 @@ const config: GloveConfig = { ...DEFAULT_CONFIG }
 
 // Glove materials by name, filled in when the model loads
 const materials = new Map<string, THREE.MeshStandardMaterial>()
+
+// The canvas texture that shows the customer's name on the wrist patch
+const namePatch = createNamePatch()
 
 // The leather texture has red baked in, so a colour tint would mix with that red.
 // This swaps in a greyscale copy, so material.color decides the final colour.
@@ -131,7 +140,13 @@ function applyConfig() {
   }
   materials.get('zone_badge')?.color.set(SEAL_COLOURS[config.seal])
   materials.get('zone_logo')?.color.set(LETTERING_COLOURS[config.lettering])
+
+  // The name patch matches the brand label: seal colour fabric, lettering colour thread
+  namePatch.draw(config.name, SEAL_COLOURS[config.seal], LETTERING_COLOURS[config.lettering])
 }
+
+// A canvas can't use a web font until it has downloaded, so redraw once it has
+document.fonts.load('100px Anton').then(applyConfig)
 
 // Show the live price. A quick pop when it changes, so the eye notices.
 const priceEl = document.querySelector<HTMLElement>('#price')
@@ -170,6 +185,24 @@ cartButton?.addEventListener('click', () => {
     cartButton.textContent = 'Add to cart'
     cartButton.disabled = false
   }, 1800)
+})
+
+// Typing a name: glide to the patch so you can watch it appear, then glide back when done
+let patchMesh: THREE.Object3D | undefined          // found when the glove loads
+const PATCH_VIEW_DIRECTION = new THREE.Vector3(1, 0.3, 0.25).normalize()   // the patch faces +x. Look from there, a bit above and in front.
+let viewBeforeName: View | null = null
+
+const nameInput = document.querySelector<HTMLInputElement>('#name-input')
+nameInput?.addEventListener('focus', () => {
+  if (!patchMesh) return
+  const target = new THREE.Box3().setFromObject(patchMesh).getCenter(new THREE.Vector3())
+  const position = target.clone().addScaledVector(PATCH_VIEW_DIRECTION, 0.25)
+  viewBeforeName = flyer.current()
+  flyer.flyTo({ position, target, minDistance: 0.2 })
+})
+nameInput?.addEventListener('blur', () => {
+  if (viewBeforeName) flyer.flyTo(viewBeforeName)
+  viewBeforeName = null
 })
 
 // ---------- Sizing ----------
@@ -231,6 +264,18 @@ loader.load(
     })
 
     makeTintable(materials.get('boxing_gloves'))
+
+    // The name patch shows our canvas instead of its plain cream colour
+    const patch = materials.get('name_patch')
+    if (patch) {
+      patch.map = namePatch.map
+      patch.bumpMap = namePatch.bumpMap
+      patch.bumpScale = 1.5
+      patch.color.set('#ffffff')   // white = show the canvas colours exactly
+      patch.needsUpdate = true     // new texture slots mean the shader has to be rebuilt
+    }
+    patchMesh = model.getObjectByName('name_patch_velcro')
+
     applyConfig()
 
     // Point the camera at the centre of the glove, whatever its size
@@ -267,6 +312,7 @@ renderer.setAnimationLoop((time) => {
     glove.position.copy(sizeAnchor).multiplyScalar(1 - gloveSize)
   }
 
+  flyer.update(delta)
   controls.update()
   renderer.render(scene, camera)
 })

@@ -26,7 +26,8 @@ export const DEFAULT_CONFIG: GloveConfig = { leather: 'red', finish: 'matte', se
 // Add 18 to WEIGHTS and TypeScript will complain until you add its price here too.
 export const WEIGHT_PRICES: Record<Weight, number> = { 10: 149, 12: 159, 14: 169, 16: 179 }
 export const GLOSS_EXTRA = 15
-export const NAME_EXTRA = 20   // custom name embroidery (Week 4)
+export const NAME_EXTRA = 20   // custom name embroidery
+export const NAME_MAX = 12     // most letters that still fit on the patch at a readable size
 
 // How big each weight looks, compared with the model as exported (14 oz)
 export const WEIGHT_SIZES: Record<Weight, number> = { 10: 0.93, 12: 0.965, 14: 1, 16: 1.04 }

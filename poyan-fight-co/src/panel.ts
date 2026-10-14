@@ -1,5 +1,6 @@
 import {
   LEATHER_COLOURS, SEAL_COLOURS, LETTERING_COLOURS, FINISHES, WEIGHTS, GLOSS_EXTRA,
+  NAME_EXTRA, NAME_MAX,
   type GloveConfig,
 } from './config'
 import { formatPrice } from './price'
@@ -76,6 +77,49 @@ function section<T extends string | number>({
   return wrap
 }
 
+// The name section: a text box instead of buttons
+function nameSection(config: GloveConfig, onChange: () => void) {
+  const wrap = document.createElement('section')
+  wrap.className = 'option'
+
+  const heading = document.createElement('h2')
+  heading.className = 'option-title'
+  const extra = document.createElement('span')
+  extra.className = 'option-picked'
+  extra.textContent = `+${formatPrice(NAME_EXTRA)}`
+  heading.append('Name', extra)
+
+  const input = document.createElement('input')
+  input.id = 'name-input'          // main.ts finds it by this id to move the camera
+  input.className = 'name-input'
+  input.type = 'text'
+  input.maxLength = NAME_MAX
+  input.placeholder = 'Add your name'
+  input.autocomplete = 'off'
+  input.spellcheck = false
+  input.enterKeyHint = 'done'      // phone keyboards show "Done" instead of "Enter"
+  input.value = config.name
+  input.setAttribute('aria-label', 'Name embroidered on the wrist patch')
+
+  // 'input' fires on every key press, so the glove updates while you type
+  input.addEventListener('input', () => {
+    config.name = input.value
+    onChange()
+  })
+
+  // Enter / Done closes the keyboard, which sends the camera back
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') input.blur()
+  })
+
+  const hint = document.createElement('p')
+  hint.className = 'option-hint'
+  hint.textContent = `Embroidered on the wrist patch. Up to ${NAME_MAX} letters.`
+
+  wrap.append(heading, input, hint)
+  return wrap
+}
+
 // Builds every section into the panel. Each button updates the config, then calls onChange.
 export function buildPanel(root: HTMLElement, config: GloveConfig, onChange: () => void) {
   root.append(
@@ -118,5 +162,7 @@ export function buildPanel(root: HTMLElement, config: GloveConfig, onChange: () 
       text: (value) => `${value} oz`,
       onPick: (value) => { config.weight = value; onChange() },
     }),
+
+    nameSection(config, onChange),
   )
 }

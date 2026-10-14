@@ -162,6 +162,37 @@ body {
   color: #fff;
 }
 
+/* Name text box */
+.name-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;            /* 16px or more stops iPhones zooming in when you tap it */
+  letter-spacing: 0.06em;
+  text-transform: uppercase;  /* matches how it's stitched */
+}
+
+.name-input::placeholder {
+  color: var(--muted);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.name-input:focus {
+  outline: none;
+  border-color: var(--ink);
+}
+
+.option-hint {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
 /* ---------- Price footer ---------- */
 
 .panel-foot {
