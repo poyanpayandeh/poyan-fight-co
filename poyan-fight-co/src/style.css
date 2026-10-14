@@ -282,6 +282,20 @@ body {
   color: var(--muted);
 }
 
+/* Small print at the bottom of the options: demo note and model credit */
+.credit {
+  margin-top: 8px;
+  padding: 16px 0 12px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.credit a {
+  color: inherit;
+}
+
 /* ---------- Price footer ---------- */
 
 .panel-foot {
