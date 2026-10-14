@@ -70,6 +70,95 @@ body {
   padding: 32px 28px 8px;
 }
 
+/* ---------- Loading screen ---------- */
+
+.loading {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 16px;
+  background: var(--bg);
+  text-align: center;
+  transition: opacity 0.6s ease, visibility 0.6s;
+}
+
+/* Fade out once the glove is in. visibility stops it blocking clicks after it fades. */
+.loading.done {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.loading-track {
+  width: 160px;
+  height: 3px;
+  border-radius: 3px;
+  background: rgb(0 0 0 / 0.08);
+  overflow: hidden;
+}
+
+/* Slides back and forth until we know the real progress */
+.loading-bar {
+  width: 35%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  animation: loading-slide 1.1s ease-in-out infinite;
+}
+
+/* Real progress known: stop sliding, grow with the download instead */
+.loading-bar.measured {
+  animation: none;
+  transition: width 0.2s;
+}
+
+@keyframes loading-slide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(300%); }
+}
+
+.loading-text {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.loading.failed .loading-track {
+  display: none;
+}
+
+/* ---------- "Drag to spin" hint ---------- */
+
+.hint {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgb(27 27 32 / 0.75);
+  color: #fff;
+  font-size: 13px;
+  white-space: nowrap;
+  pointer-events: none;   /* clicks go straight through to the glove */
+  transition: opacity 0.4s;
+}
+
+.hint.hidden {
+  opacity: 0;
+}
+
+/* People who've asked their device for less motion get a still loading bar */
+@media (prefers-reduced-motion: reduce) {
+  .loading-bar {
+    width: 100%;
+    animation: none;
+  }
+}
+
 /* ---------- Panel header ---------- */
 
 .brand {
