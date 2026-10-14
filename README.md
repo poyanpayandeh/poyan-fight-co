@@ -70,4 +70,4 @@ Glove model: ["Boxing gloves"](https://sketchfab.com/3d-models/boxing-gloves-9d2
 
 Font: [Anton](https://fonts.google.com/specimen/Anton), SIL Open Font License.
 
-Built by Poyan Payandeh, Auckland.
+Built by Poyan Payandeh.
