@@ -3,6 +3,7 @@ import '@fontsource/anton'   // the font for the name patch, bundled with the si
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import {
   DEFAULT_CONFIG, LEATHER_COLOURS, SEAL_COLOURS, LETTERING_COLOURS, WEIGHT_SIZES,
@@ -257,6 +258,42 @@ function resize() {
 // Runs once now, then whenever the canvas changes size (window resize, phone rotation, layout change)
 new ResizeObserver(resize).observe(canvas)
 
+// ---------- Loading screen and intro ----------
+
+const loadingScreen = document.querySelector<HTMLElement>('#loading')
+const loadingBar = document.querySelector<HTMLElement>('#loading-bar')
+const loadingText = document.querySelector<HTMLElement>('#loading-text')
+const hint = document.querySelector<HTMLElement>('#hint')
+
+// Phones pinch, computers scroll
+if (hint) {
+  const touch = window.matchMedia('(pointer: coarse)').matches
+  hint.textContent = touch ? 'Drag to spin · Pinch to zoom' : 'Drag to spin · Scroll to zoom'
+}
+
+// The intro: the glove turns slowly with the hint showing, until the visitor does anything at all
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+controls.autoRotateSpeed = 2   // one full turn every 30 seconds
+let introOver = false
+
+function endIntro() {
+  if (introOver) return
+  introOver = true
+  controls.autoRotate = false
+  hint?.classList.add('hidden')
+}
+
+controls.addEventListener('start', endIntro)              // dragged or zoomed the glove
+const panel = document.querySelector<HTMLElement>('.panel')
+panel?.addEventListener('pointerdown', endIntro)          // clicked or tapped anything in the panel
+panel?.addEventListener('focusin', endIntro)              // tabbed into the panel with the keyboard
+
+function startIntro() {
+  if (introOver) return                                   // they're already using it
+  hint?.classList.remove('hidden')
+  if (!reducedMotion) controls.autoRotate = true          // no spinning for people who asked for less motion
+}
+
 // ---------- Load the glove ----------
 
 let glove: THREE.Group | null = null   // set once the model has loaded
@@ -264,6 +301,7 @@ const sizeAnchor = new THREE.Vector3()  // bottom centre of the glove. It grows 
 let gloveSize = WEIGHT_SIZES[config.weight]   // current size. Starts right for shared links, then eases on changes.
 
 const loader = new GLTFLoader()
+loader.setMeshoptDecoder(MeshoptDecoder)   // unpacks the compressed model (see "optimize-model" in package.json)
 loader.load(
   '/models/glove.glb',
   (gltf) => {
@@ -308,9 +346,26 @@ loader.load(
 
     scene.add(model)
     glove = model
+
+    // Wait one frame so the glove is drawn, then fade the loading screen and start the intro
+    requestAnimationFrame(() => {
+      loadingScreen?.classList.add('done')
+      startIntro()
+    })
   },
-  undefined,
-  (error) => console.error('Could not load the glove:', error)
+
+  // Download progress. Only known if the server says how big the file is.
+  (progress) => {
+    if (!loadingBar || !progress.lengthComputable) return
+    loadingBar.classList.add('measured')
+    loadingBar.style.width = `${(progress.loaded / progress.total) * 100}%`
+  },
+
+  (error) => {
+    console.error('Could not load the glove:', error)
+    loadingScreen?.classList.add('failed')
+    if (loadingText) loadingText.textContent = 'Couldn’t load the glove. Check your connection and refresh.'
+  }
 )
 
 // Draw every frame
@@ -331,6 +386,6 @@ renderer.setAnimationLoop((time) => {
   }
 
   flyer.update(delta)
-  controls.update()
+  controls.update(delta)   // passing delta keeps the intro spin the same speed on any screen
   renderer.render(scene, camera)
 })
